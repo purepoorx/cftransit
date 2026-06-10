@@ -1,0 +1,4 @@
+port: 8080
+dsn: "postgres://user:password@localhost:5432/cftransit?sslmode=disable"
+api_key: "changeme"
+speedtest_url: "https://speed.cloudflare.com/__down?bytes=25000000"

@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/page_background"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- 标题 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/card_bg"
+            android:elevation="1dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="连接设置"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="配置服务端 API 地址和密钥"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- API Base URL -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/card_bg"
+            android:elevation="1dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="API 地址"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/input_bg"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <EditText
+                    android:id="@+id/editBaseUrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@android:color/transparent"
+                    android:hint="https://your-server.com"
+                    android:imeOptions="actionNext"
+                    android:importantForAutofill="no"
+                    android:inputType="textUri"
+                    android:singleLine="true"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="API Key"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/input_bg"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <EditText
+                    android:id="@+id/editApiKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@android:color/transparent"
+                    android:hint="输入 API Key"
+                    android:imeOptions="actionDone"
+                    android:importantForAutofill="no"
+                    android:inputType="textPassword"
+                    android:singleLine="true"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 按钮 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/card_bg"
+            android:elevation="1dp"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <Button
+                android:id="@+id/btnTestConnection"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:background="@drawable/btn_secondary_bg"
+                android:stateListAnimator="@null"
+                android:text="测试连接"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtTestResult"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/metric_bg"
+                android:padding="10dp"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/btnSave"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/btn_primary_bg"
+                android:stateListAnimator="@null"
+                android:text="保存"
+                android:textColor="@color/text_on_primary"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

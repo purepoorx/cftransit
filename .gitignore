@@ -1,0 +1,35 @@
+# Server config (contains secrets)
+server/config.yaml
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+go.sum
+
+# Android build outputs
+android/app/build/
+android/app/libs/*.aar
+android/local.properties
+android/.gradle/
+
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+scripts/.gradle/
+scripts/.cache/
+scripts/.tmp/
