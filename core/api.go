@@ -5,31 +5,45 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 )
 
 // ProxyInfo 从服务端获取的代理信息
 type ProxyInfo struct {
-	IP       string `json:"ip"`
-	Port     int    `json:"port"`
-	TLS      bool   `json:"tls"`
-	DC       string `json:"dc"`
-	Region   string `json:"region"`
-	City     string `json:"city"`
-	Country  string `json:"country"`
+	IP      string `json:"ip"`
+	Port    int    `json:"port"`
+	TLS     bool   `json:"tls"`
+	DC      string `json:"dc"`
+	Region  string `json:"region"`
+	City    string `json:"city"`
+	Country string `json:"country"`
 }
 
 var httpClient = &http.Client{Timeout: 15 * time.Second}
 
-func fetchProxies(sample int) ([]ProxyInfo, error) {
+func fetchProxies(sample int, country, dc string, tlsOnly bool) ([]ProxyInfo, error) {
 	base := getAPIBaseURL()
 	key := getAPIKey()
 	if base == "" {
 		return nil, fmt.Errorf("未配置 API 地址")
 	}
 
-	url := fmt.Sprintf("%s/proxies?sample=%d", base, sample)
-	req, _ := http.NewRequestWithContext(scanCtx(), "GET", url, nil)
+	params := url.Values{}
+	params.Set("sample", strconv.Itoa(sample))
+	if country != "" {
+		params.Set("country", country)
+	}
+	if dc != "" {
+		params.Set("dc", dc)
+	}
+	if tlsOnly {
+		params.Set("tls", "true")
+	}
+
+	reqURL := fmt.Sprintf("%s/proxies?%s", base, params.Encode())
+	req, _ := http.NewRequestWithContext(scanCtx(), "GET", reqURL, nil)
 	req.Header.Set("X-API-Key", key)
 
 	resp, err := httpClient.Do(req)
@@ -54,31 +68,81 @@ func fetchProxies(sample int) ([]ProxyInfo, error) {
 	return result.Data, nil
 }
 
-func fetchSpeedTestURL() (string, error) {
+func fetchSpeedTestPath() (string, error) {
 	base := getAPIBaseURL()
 	key := getAPIKey()
 	if base == "" {
 		return "", fmt.Errorf("未配置 API 地址")
 	}
 
-	url := fmt.Sprintf("%s/speedtest/url", base)
-	req, _ := http.NewRequestWithContext(scanCtx(), "GET", url, nil)
+	reqURL := fmt.Sprintf("%s/speedtest/url", base)
+	req, _ := http.NewRequestWithContext(scanCtx(), "GET", reqURL, nil)
 	req.Header.Set("X-API-Key", key)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("获取测速 URL 失败: %w", err)
+		return "", fmt.Errorf("获取测速路径失败: %w", err)
 	}
 	defer resp.Body.Close()
 
 	var result struct {
-		URL string `json:"url"`
+		Path string `json:"path"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("解析测速 URL 失败: %w", err)
+		return "", fmt.Errorf("解析测速路径失败: %w", err)
 	}
 
-	return result.URL, nil
+	return result.Path, nil
+}
+
+// FetchFilterOptions 获取筛选选项列表，返回 JSON
+// 格式: {"dcList":["SJC","LAX",...],"countryList":["US","DE",...]}
+func FetchFilterOptions() string {
+	base := getAPIBaseURL()
+	key := getAPIKey()
+	if base == "" {
+		return `{"dcList":[],"countryList":[]}`
+	}
+
+	reqURL := fmt.Sprintf("%s/stats", base)
+	req, _ := http.NewRequest("GET", reqURL, nil)
+	req.Header.Set("X-API-Key", key)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Sprintf(`{"error":"连接失败: %s"}`, err.Error())
+	}
+	defer resp.Body.Close()
+
+	var stats struct {
+		DCStats      []struct{ DC string `json:"dc"` }      `json:"dcStats"`
+		CountryStats []struct{ Country string `json:"country"` } `json:"countryStats"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+		return `{"dcList":[],"countryList":[]}`
+	}
+
+	dcList := make([]string, 0, len(stats.DCStats))
+	for _, d := range stats.DCStats {
+		if d.DC != "" {
+			dcList = append(dcList, d.DC)
+		}
+	}
+
+	countryList := make([]string, 0, len(stats.CountryStats))
+	for _, c := range stats.CountryStats {
+		if c.Country != "" {
+			countryList = append(countryList, c.Country)
+		}
+	}
+
+	result := map[string]interface{}{
+		"dcList":      dcList,
+		"countryList": countryList,
+	}
+	b, _ := json.Marshal(result)
+	return string(b)
 }
 
 // TestConnection 测试与服务端的连接，返回 JSON 结果
@@ -89,8 +153,8 @@ func TestConnection() string {
 		return `{"ok":false,"error":"未配置 API 地址"}`
 	}
 
-	url := fmt.Sprintf("%s/stats", base)
-	req, _ := http.NewRequest("GET", url, nil)
+	reqURL := fmt.Sprintf("%s/stats", base)
+	req, _ := http.NewRequest("GET", reqURL, nil)
 	req.Header.Set("X-API-Key", key)
 
 	client := &http.Client{Timeout: 10 * time.Second}

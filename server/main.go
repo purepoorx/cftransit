@@ -40,7 +40,7 @@ func main() {
 	{
 		api.GET("/proxies", handlers.GetProxies)
 		api.GET("/stats", handlers.GetStats)
-		api.GET("/speedtest/url", handlers.GetSpeedtestURL(cfg.SpeedtestURL))
+		api.GET("/speedtest/url", handlers.GetSpeedtestURL(cfg.SpeedtestPath))
 	}
 
 	// 启动 HTTP 服务

@@ -17,6 +17,7 @@ type ScanResult struct {
 	DC            string `json:"dc"`
 	City          string `json:"city"`
 	Region        string `json:"region"`
+	Country       string `json:"country"`
 	Elapsed       int    `json:"elapsed"`
 	Error         string `json:"error"`
 }
@@ -25,7 +26,10 @@ const maxRounds = 5
 
 // GetIPs 运行 IP 优选扫描，返回结果 JSON
 // bandwidth: 期望带宽（Mbps），设为 0 则使用默认 1 Mbps
-func GetIPs(bandwidth int) string {
+// country: 按国家筛选（如 "US"），空字符串表示全部
+// dc: 按数据中心筛选（如 "SJC"），空字符串表示全部
+// tlsOnly: true 表示只测试 TLS 代理
+func GetIPs(bandwidth int, country string, dc string, tlsOnly bool) string {
 	setProgress("正在初始化...")
 	resetCancel()
 
@@ -36,9 +40,9 @@ func GetIPs(bandwidth int) string {
 
 	startTime := time.Now()
 
-	// 获取测速 URL
-	setProgress("正在获取测速 URL...")
-	speedTestURL, err := fetchSpeedTestURL()
+	// 获取测速路径（不含协议）
+	setProgress("正在获取测速路径...")
+	speedTestPath, err := fetchSpeedTestPath()
 	if err != nil {
 		return errorResult(bandwidth, startTime, err.Error())
 	}
@@ -51,7 +55,7 @@ func GetIPs(bandwidth int) string {
 		}
 
 		setProgress(fmt.Sprintf("第 %d/%d 轮：正在获取代理列表...", round, maxRounds))
-		proxies, err := fetchProxies(50)
+		proxies, err := fetchProxies(50, country, dc, tlsOnly)
 		if err != nil {
 			if round == maxRounds {
 				return errorResult(bandwidth, startTime, err.Error())
@@ -81,14 +85,15 @@ func GetIPs(bandwidth int) string {
 			}
 
 			setProgress(fmt.Sprintf("正在测速 %s:%d (延迟 %dms)", r.IP, r.Port, r.LatencyMs))
-			maxSpeed, tcpMs, dc := runSpeedTest(r.IP, r.Port, r.TLS, speedTestURL)
+			maxSpeed, tcpMs, speedDC := runSpeedTest(r.IP, r.Port, r.TLS, speedTestPath)
 
 			// 查找代理的地理信息
-			var city, region string
+			var pCity, pRegion, pCountry string
 			for _, p := range proxies {
 				if p.IP == r.IP {
-					city = p.City
-					region = p.Region
+					pCity = p.City
+					pRegion = p.Region
+					pCountry = p.Country
 					break
 				}
 			}
@@ -100,9 +105,10 @@ func GetIPs(bandwidth int) string {
 				RealBandwidth: maxSpeed / 128,
 				MaxSpeed:      maxSpeed,
 				LatencyMs:     tcpMs,
-				DC:            dc,
-				City:          city,
-				Region:        region,
+				DC:            speedDC,
+				City:          pCity,
+				Region:        pRegion,
+				Country:       pCountry,
 				Elapsed:       int(time.Since(startTime).Seconds()),
 			}
 

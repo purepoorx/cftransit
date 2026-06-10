@@ -3,6 +3,7 @@ server/config.yaml
 
 # Binaries
 *.exe
+*.exe~
 *.dll
 *.so
 *.dylib

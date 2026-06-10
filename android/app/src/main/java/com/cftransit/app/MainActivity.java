@@ -16,10 +16,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,7 +29,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -53,10 +57,14 @@ public class MainActivity extends AppCompatActivity {
     private TextView txtDataCenter;
     private TextView txtElapsed;
     private TextView txtEmptyHistory;
+    private TextView txtFilterStatus;
     private View layoutProgress;
     private View layoutResult;
     private LinearLayout layoutHistoryList;
     private TextView btnSettings;
+    private Spinner spinnerCountry;
+    private Spinner spinnerDC;
+    private Spinner spinnerTLS;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -69,7 +77,12 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_THEME = "theme_idx";
     private static final String PREFS_HISTORY = "history_records";
     private static final String PREFS_BANDWIDTH = "bandwidth";
+    private static final String PREFS_COUNTRY = "filter_country";
+    private static final String PREFS_DC = "filter_dc";
+    private static final String PREFS_TLS = "filter_tls";
     private static final int MAX_HISTORY = 10;
+
+    private static final String[] TLS_OPTIONS = {"全部", "仅 TLS", "仅非 TLS"};
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,10 +109,28 @@ public class MainActivity extends AppCompatActivity {
         txtEmptyHistory = findViewById(R.id.txtEmptyHistory);
         layoutHistoryList = findViewById(R.id.layoutHistoryList);
         btnSettings = findViewById(R.id.btnSettings);
+        txtFilterStatus = findViewById(R.id.txtFilterStatus);
+        spinnerCountry = findViewById(R.id.spinnerCountry);
+        spinnerDC = findViewById(R.id.spinnerDC);
+        spinnerTLS = findViewById(R.id.spinnerTLS);
 
         Transit.setCacheDir(getFilesDir().getAbsolutePath());
         loadApiConfig();
         loadScanSettings();
+
+        // TLS Spinner 固定选项
+        ArrayAdapter<String> tlsAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, TLS_OPTIONS);
+        tlsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerTLS.setAdapter(tlsAdapter);
+
+        // 初始化筛选 Spinner 为空
+        setSpinnerOptions(spinnerCountry, new ArrayList<>());
+        setSpinnerOptions(spinnerDC, new ArrayList<>());
+
+        // 恢复筛选设置
+        int savedTLS = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getInt(PREFS_TLS, 0);
+        spinnerTLS.setSelection(savedTLS);
 
         // 主题
         themeModeIndex = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getInt(PREFS_THEME, 0);
@@ -141,12 +172,102 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadApiConfig();
+        loadFilterOptions();
     }
 
     private void loadApiConfig() {
         String url = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString("api_base_url", "");
         String key = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString("api_key", "");
         Transit.setAPIConfig(url, key);
+    }
+
+    private void loadFilterOptions() {
+        String url = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString("api_base_url", "");
+        if (url.isEmpty()) return;
+
+        txtFilterStatus.setVisibility(View.VISIBLE);
+        txtFilterStatus.setText("正在加载筛选选项...");
+
+        executor.execute(() -> {
+            String result = Transit.fetchFilterOptions();
+            runOnUiThread(() -> {
+                try {
+                    JSONObject json = new JSONObject(result);
+                    if (json.has("error")) {
+                        txtFilterStatus.setText("加载失败: " + json.getString("error"));
+                        return;
+                    }
+
+                    List<String> dcList = jsonArrayToList(json.optJSONArray("dcList"));
+                    List<String> countryList = jsonArrayToList(json.optJSONArray("countryList"));
+
+                    setSpinnerOptions(spinnerCountry, countryList);
+                    setSpinnerOptions(spinnerDC, dcList);
+
+                    // 恢复之前的选择
+                    String savedCountry = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREFS_COUNTRY, "");
+                    String savedDC = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREFS_DC, "");
+                    selectSpinnerValue(spinnerCountry, savedCountry);
+                    selectSpinnerValue(spinnerDC, savedDC);
+
+                    txtFilterStatus.setText(String.format(Locale.getDefault(),
+                            "已加载 %d 个国家, %d 个数据中心", countryList.size(), dcList.size()));
+                } catch (Exception e) {
+                    txtFilterStatus.setText("解析筛选选项失败");
+                }
+            });
+        });
+    }
+
+    private void setSpinnerOptions(Spinner spinner, List<String> options) {
+        List<String> items = new ArrayList<>();
+        items.add("全部");
+        items.addAll(options);
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_item, items);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+    }
+
+    private void selectSpinnerValue(Spinner spinner, String value) {
+        if (value == null || value.isEmpty()) {
+            spinner.setSelection(0);
+            return;
+        }
+        @SuppressWarnings("unchecked")
+        ArrayAdapter<String> adapter = (ArrayAdapter<String>) spinner.getAdapter();
+        for (int i = 0; i < adapter.getCount(); i++) {
+            if (adapter.getItem(i).equals(value)) {
+                spinner.setSelection(i);
+                return;
+            }
+        }
+    }
+
+    private List<String> jsonArrayToList(JSONArray arr) {
+        List<String> list = new ArrayList<>();
+        if (arr == null) return list;
+        for (int i = 0; i < arr.length(); i++) {
+            String s = arr.optString(i, "");
+            if (!s.isEmpty()) list.add(s);
+        }
+        return list;
+    }
+
+    private String getSelectedCountry() {
+        String val = spinnerCountry.getSelectedItem().toString();
+        return val.equals("全部") ? "" : val;
+    }
+
+    private String getSelectedDC() {
+        String val = spinnerDC.getSelectedItem().toString();
+        return val.equals("全部") ? "" : val;
+    }
+
+    private boolean getTLSOnly() {
+        int idx = spinnerTLS.getSelectedItemPosition();
+        return idx == 1; // "仅 TLS"
     }
 
     private void startScan() {
@@ -160,6 +281,10 @@ public class MainActivity extends AppCompatActivity {
         }
 
         final int bandwidth = normalizeBandwidthInput();
+        final String country = getSelectedCountry();
+        final String dc = getSelectedDC();
+        final boolean tlsOnly = getTLSOnly();
+
         editBandwidth.clearFocus();
         hideKeyboard(editBandwidth);
         saveScanSettings();
@@ -177,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
 
         executor.execute(() -> {
             try {
-                String resultJson = Transit.getIPs(bandwidth);
+                String resultJson = Transit.getIPs(bandwidth, country, dc, tlsOnly);
                 mainHandler.post(() -> onScanResult(resultJson));
             } catch (Exception e) {
                 mainHandler.post(() -> showResult("扫描出错: " + e.getMessage()));
@@ -234,12 +359,12 @@ public class MainActivity extends AppCompatActivity {
                 int realBw = json.optInt("realBandwidth", 0);
                 int maxSpeed = json.optInt("maxSpeed", 0);
                 int latencyMs = json.optInt("latencyMs", 0);
-                String dc = json.optString("dc", "");
+                String dcVal = json.optString("dc", "");
                 int elapsed = json.optInt("elapsed", 0);
                 currentIp = ip;
 
                 String scanTime = formatNow();
-                showStructuredResult(ip, bw, realBw, maxSpeed, latencyMs, dc, elapsed);
+                showStructuredResult(ip, bw, realBw, maxSpeed, latencyMs, dcVal, elapsed);
                 saveHistory(scanTime, json);
                 renderHistory();
             } else {
@@ -326,6 +451,9 @@ public class MainActivity extends AppCompatActivity {
     private void saveScanSettings() {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
                 .putInt(PREFS_BANDWIDTH, normalizeBandwidthInput())
+                .putString(PREFS_COUNTRY, getSelectedCountry())
+                .putString(PREFS_DC, getSelectedDC())
+                .putInt(PREFS_TLS, spinnerTLS.getSelectedItemPosition())
                 .apply();
     }
 
@@ -449,7 +577,6 @@ public class MainActivity extends AppCompatActivity {
         rootParams.setMargins(0, dp(8), 0, 0);
         root.setLayoutParams(rootParams);
 
-        // Header row
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -472,7 +599,6 @@ public class MainActivity extends AppCompatActivity {
         header.addView(delBtn, new LinearLayout.LayoutParams(dp(48), dp(30)));
         root.addView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // IP
         TextView ipView = new TextView(this);
         ipView.setText(ip);
         ipView.setTextColor(color(R.color.primary));
@@ -485,7 +611,6 @@ public class MainActivity extends AppCompatActivity {
         ipView.setOnClickListener(v -> copyToClipboard("CF-IP", ip, "已复制 IP: " + ip));
         root.addView(ipView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        // Details
         TextView details = new TextView(this);
         details.setText("实测 " + realBw + " Mbps / 目标 " + bw + " Mbps\n"
                 + "峰值 " + maxSpeed + " kB/s / 延迟 " + latencyMs + " ms\n"

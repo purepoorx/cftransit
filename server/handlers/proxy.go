@@ -15,6 +15,7 @@ func GetProxies(c *gin.Context) {
 	sample, _ := strconv.Atoi(c.Query("sample"))
 	dc := c.Query("dc")
 	region := c.Query("region")
+	country := c.Query("country")
 	tlsStr := c.Query("tls")
 
 	if page < 1 {
@@ -34,6 +35,9 @@ func GetProxies(c *gin.Context) {
 	if region != "" {
 		query = query.Where("proxies.region = ?", region)
 	}
+	if country != "" {
+		query = query.Where("ip_info.country = ?", country)
+	}
 	if tlsStr != "" {
 		if tlsStr == "true" {
 			query = query.Where("proxies.tls = true")
@@ -52,17 +56,21 @@ func GetProxies(c *gin.Context) {
 
 	// 分页模式
 	var total int64
-	countQuery := models.DB.Table("proxies")
+	countQuery := models.DB.Table("proxies").
+		Joins("LEFT JOIN ip_info ON proxies.ip::text = ip_info.ip::text")
 	if dc != "" {
-		countQuery = countQuery.Where("dc = ?", dc)
+		countQuery = countQuery.Where("proxies.dc = ?", dc)
 	}
 	if region != "" {
-		countQuery = countQuery.Where("region = ?", region)
+		countQuery = countQuery.Where("proxies.region = ?", region)
+	}
+	if country != "" {
+		countQuery = countQuery.Where("ip_info.country = ?", country)
 	}
 	if tlsStr == "true" {
-		countQuery = countQuery.Where("tls = true")
+		countQuery = countQuery.Where("proxies.tls = true")
 	} else if tlsStr == "false" {
-		countQuery = countQuery.Where("tls = false")
+		countQuery = countQuery.Where("proxies.tls = false")
 	}
 	countQuery.Count(&total)
 

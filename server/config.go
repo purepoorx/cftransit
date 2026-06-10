@@ -9,17 +9,17 @@ import (
 )
 
 type Config struct {
-	Port        int    `yaml:"port"`
-	DSN         string `yaml:"dsn"`
-	APIKey      string `yaml:"api_key"`
-	SpeedtestURL string `yaml:"speedtest_url"`
+	Port          int    `yaml:"port"`
+	DSN           string `yaml:"dsn"`
+	APIKey        string `yaml:"api_key"`
+	SpeedtestPath string `yaml:"speedtest_path"`
 }
 
 func LoadConfig(path string) *Config {
 	cfg := &Config{
-		Port:         8080,
-		APIKey:       "changeme",
-		SpeedtestURL: "https://speed.cloudflare.com/__down?bytes=25000000",
+		Port:          8080,
+		APIKey:        "changeme",
+		SpeedtestPath: "speed.cloudflare.com/__down?bytes=25000000",
 	}
 
 	data, err := os.ReadFile(path)
@@ -39,8 +39,8 @@ func LoadConfig(path string) *Config {
 	if v := os.Getenv("CFTRANSIT_API_KEY"); v != "" {
 		cfg.APIKey = v
 	}
-	if v := os.Getenv("CFTRANSIT_SPEEDTEST_URL"); v != "" {
-		cfg.SpeedtestURL = v
+	if v := os.Getenv("CFTRANSIT_SPEEDTEST_PATH"); v != "" {
+		cfg.SpeedtestPath = v
 	}
 
 	// GORM postgres driver 需要 postgres:// 前缀

@@ -3,6 +3,7 @@ package transit
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -11,8 +12,10 @@ import (
 )
 
 // runSpeedTest 对目标 IP 进行 HTTP 下载速度测试
+// speedTestPath 是不含协议的路径，如 "speed.cloudflare.com/__down?bytes=25000000"
+// 根据 useTLS 自动拼接 http:// 或 https://
 // 返回 (峰值速度 kB/s, TCP延迟ms, DC三字码)
-func runSpeedTest(ip string, port int, useTLS bool, speedTestURL string) (int, int, string) {
+func runSpeedTest(ip string, port int, useTLS bool, speedTestPath string) (int, int, string) {
 	var tcpMs int
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -32,7 +35,13 @@ func runSpeedTest(ip string, port int, useTLS bool, speedTestURL string) (int, i
 		Timeout:   8 * time.Second,
 	}
 
-	req, _ := http.NewRequestWithContext(scanCtx(), "GET", speedTestURL, nil)
+	scheme := "http"
+	if useTLS {
+		scheme = "https"
+	}
+	fullURL := fmt.Sprintf("%s://%s", scheme, speedTestPath)
+
+	req, _ := http.NewRequestWithContext(scanCtx(), "GET", fullURL, nil)
 	resp, err := client.Do(req)
 	if err != nil {
 		return 0, 0, ""
