@@ -6,13 +6,13 @@ server/config.yaml
 *.dll
 *.so
 *.dylib
+server/cftransit-server-linux-*
 
-# Go
-go.sum
 
 # Android build outputs
 android/app/build/
 android/app/libs/*.aar
+android/app/libs/*.jar
 android/local.properties
 android/.gradle/
 
