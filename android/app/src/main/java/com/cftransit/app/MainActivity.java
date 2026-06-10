@@ -271,9 +271,9 @@ public class MainActivity extends AppCompatActivity {
         return val.equals("全部") ? "" : val;
     }
 
-    private boolean getTLSOnly() {
-        int idx = spinnerTLS.getSelectedItemPosition();
-        return idx == 1; // "仅 TLS"
+    private int getTLSMode() {
+        // Spinner: 0=全部, 1=仅 TLS, 2=仅非 TLS
+        return spinnerTLS.getSelectedItemPosition();
     }
 
     private void startScan() {
@@ -289,7 +289,7 @@ public class MainActivity extends AppCompatActivity {
         final int bandwidth = normalizeBandwidthInput();
         final String country = getSelectedCountry();
         final String dc = getSelectedDC();
-        final boolean tlsOnly = getTLSOnly();
+        final int tlsMode = getTLSMode();
 
         editBandwidth.clearFocus();
         hideKeyboard(editBandwidth);
@@ -308,7 +308,7 @@ public class MainActivity extends AppCompatActivity {
 
         executor.execute(() -> {
             try {
-                String resultJson = Transit.getIPs(bandwidth, country, dc, tlsOnly);
+                String resultJson = Transit.getIPs(bandwidth, country, dc, tlsMode);
                 mainHandler.post(() -> onScanResult(resultJson));
             } catch (Exception e) {
                 mainHandler.post(() -> showResult("扫描出错: " + e.getMessage()));

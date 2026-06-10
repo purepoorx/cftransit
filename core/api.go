@@ -23,7 +23,7 @@ type ProxyInfo struct {
 
 var httpClient = &http.Client{Timeout: 15 * time.Second}
 
-func fetchProxies(sample int, country, dc string, tlsOnly bool) ([]ProxyInfo, error) {
+func fetchProxies(sample int, country, dc string, tlsMode int) ([]ProxyInfo, error) {
 	base := getAPIBaseURL()
 	key := getAPIKey()
 	if base == "" {
@@ -38,8 +38,10 @@ func fetchProxies(sample int, country, dc string, tlsOnly bool) ([]ProxyInfo, er
 	if dc != "" {
 		params.Set("dc", dc)
 	}
-	if tlsOnly {
+	if tlsMode == 1 {
 		params.Set("tls", "true")
+	} else if tlsMode == 2 {
+		params.Set("tls", "false")
 	}
 
 	reqURL := fmt.Sprintf("%s/proxies?%s", base, params.Encode())

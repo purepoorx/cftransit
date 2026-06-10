@@ -29,8 +29,8 @@ const maxRounds = 5
 // bandwidth: 期望带宽（Mbps），设为 0 则使用默认 1 Mbps
 // country: 按国家筛选（如 "US"），空字符串表示全部
 // dc: 按数据中心筛选（如 "SJC"），空字符串表示全部
-// tlsOnly: true 表示只测试 TLS 代理
-func GetIPs(bandwidth int, country string, dc string, tlsOnly bool) string {
+// tlsMode: 0=全部, 1=仅TLS, 2=仅非TLS
+func GetIPs(bandwidth int, country string, dc string, tlsMode int) string {
 	setProgress("正在初始化...")
 	resetCancel()
 
@@ -56,7 +56,7 @@ func GetIPs(bandwidth int, country string, dc string, tlsOnly bool) string {
 		}
 
 		setProgress(fmt.Sprintf("第 %d/%d 轮：正在获取代理列表...", round, maxRounds))
-		proxies, err := fetchProxies(50, country, dc, tlsOnly)
+		proxies, err := fetchProxies(50, country, dc, tlsMode)
 		if err != nil {
 			if round == maxRounds {
 				return errorResult(bandwidth, startTime, err.Error())
