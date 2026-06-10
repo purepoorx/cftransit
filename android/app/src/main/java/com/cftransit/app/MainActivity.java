@@ -428,7 +428,7 @@ public class MainActivity extends AppCompatActivity {
         layoutProgress.setVisibility(View.GONE);
         layoutResult.setVisibility(View.VISIBLE);
         txtIpValue.setEnabled(true);
-        txtIpValue.setText(ip);
+        txtIpValue.setText(ip + ":" + port);
         txtPort.setText(String.valueOf(port));
         txtTLS.setText(tls ? "是" : "否");
         txtTargetBandwidth.setText(bw + " Mbps");
