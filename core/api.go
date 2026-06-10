@@ -104,7 +104,7 @@ func FetchFilterOptions() string {
 		return `{"dcList":[],"countryList":[]}`
 	}
 
-	reqURL := fmt.Sprintf("%s/stats", base)
+	reqURL := fmt.Sprintf("%s/filters", base)
 	req, _ := http.NewRequest("GET", reqURL, nil)
 	req.Header.Set("X-API-Key", key)
 
@@ -115,32 +115,14 @@ func FetchFilterOptions() string {
 	}
 	defer resp.Body.Close()
 
-	var stats struct {
-		DCStats      []struct{ DC string `json:"dc"` }      `json:"dcStats"`
-		CountryStats []struct{ Country string `json:"country"` } `json:"countryStats"`
+	var result struct {
+		DCList      []string `json:"dcList"`
+		CountryList []string `json:"countryList"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&stats); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return `{"dcList":[],"countryList":[]}`
 	}
 
-	dcList := make([]string, 0, len(stats.DCStats))
-	for _, d := range stats.DCStats {
-		if d.DC != "" {
-			dcList = append(dcList, d.DC)
-		}
-	}
-
-	countryList := make([]string, 0, len(stats.CountryStats))
-	for _, c := range stats.CountryStats {
-		if c.Country != "" {
-			countryList = append(countryList, c.Country)
-		}
-	}
-
-	result := map[string]interface{}{
-		"dcList":      dcList,
-		"countryList": countryList,
-	}
 	b, _ := json.Marshal(result)
 	return string(b)
 }

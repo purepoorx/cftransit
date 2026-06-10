@@ -40,6 +40,7 @@ func main() {
 	{
 		api.GET("/proxies", handlers.GetProxies)
 		api.GET("/stats", handlers.GetStats)
+		api.GET("/filters", handlers.GetFilters)
 		api.GET("/speedtest/url", handlers.GetSpeedtestURL(cfg.SpeedtestPath))
 	}
 
