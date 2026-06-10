@@ -50,6 +50,8 @@ public class MainActivity extends AppCompatActivity {
     private TextView txtResult;
     private TextView txtThemeMode;
     private TextView txtIpValue;
+    private TextView txtPort;
+    private TextView txtTLS;
     private TextView txtTargetBandwidth;
     private TextView txtRealBandwidth;
     private TextView txtMaxSpeed;
@@ -72,6 +74,8 @@ public class MainActivity extends AppCompatActivity {
     private Runnable progressPoller;
     private static Toast activeToast;
     private String currentIp = "";
+    private int currentPort = 0;
+    private boolean currentTLS = false;
 
     private static final String PREFS_NAME = "cftransit_prefs";
     private static final String PREFS_THEME = "theme_idx";
@@ -100,6 +104,8 @@ public class MainActivity extends AppCompatActivity {
         layoutResult = findViewById(R.id.layoutResult);
         txtThemeMode = findViewById(R.id.txtThemeMode);
         txtIpValue = findViewById(R.id.txtIpValue);
+        txtPort = findViewById(R.id.txtPort);
+        txtTLS = findViewById(R.id.txtTLS);
         txtTargetBandwidth = findViewById(R.id.txtTargetBandwidth);
         txtRealBandwidth = findViewById(R.id.txtRealBandwidth);
         txtMaxSpeed = findViewById(R.id.txtMaxSpeed);
@@ -355,6 +361,8 @@ public class MainActivity extends AppCompatActivity {
             }
 
             if (!ip.isEmpty()) {
+                int port = json.optInt("port", 0);
+                boolean tls = json.optBoolean("tls", false);
                 int bw = json.optInt("bandwidth", 0);
                 int realBw = json.optInt("realBandwidth", 0);
                 int maxSpeed = json.optInt("maxSpeed", 0);
@@ -362,9 +370,11 @@ public class MainActivity extends AppCompatActivity {
                 String dcVal = json.optString("dc", "");
                 int elapsed = json.optInt("elapsed", 0);
                 currentIp = ip;
+                currentPort = port;
+                currentTLS = tls;
 
                 String scanTime = formatNow();
-                showStructuredResult(ip, bw, realBw, maxSpeed, latencyMs, dcVal, elapsed);
+                showStructuredResult(ip, port, tls, bw, realBw, maxSpeed, latencyMs, dcVal, elapsed);
                 saveHistory(scanTime, json);
                 renderHistory();
             } else {
@@ -400,6 +410,8 @@ public class MainActivity extends AppCompatActivity {
         layoutResult.setVisibility(View.VISIBLE);
         txtIpValue.setText("未找到可用 IP");
         txtIpValue.setEnabled(false);
+        txtPort.setText("-");
+        txtTLS.setText("-");
         txtTargetBandwidth.setText("-");
         txtRealBandwidth.setText("-");
         txtMaxSpeed.setText("-");
@@ -407,15 +419,18 @@ public class MainActivity extends AppCompatActivity {
         txtDataCenter.setText("-");
         txtElapsed.setText("-");
         currentIp = "";
+        currentPort = 0;
         txtResult.setVisibility(View.VISIBLE);
         txtResult.setText(text);
     }
 
-    private void showStructuredResult(String ip, int bw, int realBw, int maxSpeed, int latencyMs, String dc, int elapsed) {
+    private void showStructuredResult(String ip, int port, boolean tls, int bw, int realBw, int maxSpeed, int latencyMs, String dc, int elapsed) {
         layoutProgress.setVisibility(View.GONE);
         layoutResult.setVisibility(View.VISIBLE);
         txtIpValue.setEnabled(true);
         txtIpValue.setText(ip);
+        txtPort.setText(String.valueOf(port));
+        txtTLS.setText(tls ? "是" : "否");
         txtTargetBandwidth.setText(bw + " Mbps");
         txtRealBandwidth.setText(realBw + " Mbps");
         txtMaxSpeed.setText(maxSpeed + " kB/s");
@@ -482,7 +497,8 @@ public class MainActivity extends AppCompatActivity {
     // ---- 剪贴板 ----
     private void copyCurrentIp() {
         if (currentIp == null || currentIp.isEmpty()) { showToast("暂无可复制的 IP"); return; }
-        copyToClipboard("CF-IP", currentIp, "已复制 IP: " + currentIp);
+        String copyText = currentIp + ":" + currentPort;
+        copyToClipboard("CF-IP", copyText, "已复制: " + copyText + (currentTLS ? " (TLS)" : ""));
     }
 
     private void copyToClipboard(String label, String text, String toastText) {
@@ -503,6 +519,8 @@ public class MainActivity extends AppCompatActivity {
             JSONObject item = new JSONObject();
             item.put("time", scanTime);
             item.put("ip", source.optString("ip", ""));
+            item.put("port", source.optInt("port", 0));
+            item.put("tls", source.optBoolean("tls", false));
             item.put("bandwidth", source.optInt("bandwidth", 0));
             item.put("realBandwidth", source.optInt("realBandwidth", 0));
             item.put("maxSpeed", source.optInt("maxSpeed", 0));
@@ -561,6 +579,8 @@ public class MainActivity extends AppCompatActivity {
     private View createHistoryItem(JSONObject item, int index) {
         String time = item.optString("time", "");
         String ip = item.optString("ip", "");
+        int port = item.optInt("port", 0);
+        boolean tls = item.optBoolean("tls", false);
         int bw = item.optInt("bandwidth", 0);
         int realBw = item.optInt("realBandwidth", 0);
         int maxSpeed = item.optInt("maxSpeed", 0);
@@ -600,7 +620,8 @@ public class MainActivity extends AppCompatActivity {
         root.addView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView ipView = new TextView(this);
-        ipView.setText(ip);
+        String displayIp = ip + ":" + port + (tls ? " 🔒" : "");
+        ipView.setText(displayIp);
         ipView.setTextColor(color(R.color.primary));
         ipView.setTextSize(18);
         ipView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
@@ -608,13 +629,14 @@ public class MainActivity extends AppCompatActivity {
         ipView.setMinHeight(dp(40));
         ipView.setPadding(0, dp(5), 0, dp(4));
         ipView.setClickable(true);
-        ipView.setOnClickListener(v -> copyToClipboard("CF-IP", ip, "已复制 IP: " + ip));
+        String copyText = ip + ":" + port;
+        ipView.setOnClickListener(v -> copyToClipboard("CF-IP", copyText, "已复制: " + copyText + (tls ? " (TLS)" : "")));
         root.addView(ipView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView details = new TextView(this);
         details.setText("实测 " + realBw + " Mbps / 目标 " + bw + " Mbps\n"
                 + "峰值 " + maxSpeed + " kB/s / 延迟 " + latencyMs + " ms\n"
-                + "DC " + displayValue(dc) + " / 用时 " + elapsed + " 秒");
+                + "DC " + displayValue(dc) + " / TLS " + (tls ? "是" : "否") + " / 用时 " + elapsed + " 秒");
         details.setTextColor(color(R.color.text_secondary));
         details.setTextSize(13);
         details.setLineSpacing(dp(2), 1.0f);

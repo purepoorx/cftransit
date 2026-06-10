@@ -10,6 +10,7 @@ import (
 type ScanResult struct {
 	IP            string `json:"ip"`
 	Port          int    `json:"port"`
+	TLS           bool   `json:"tls"`
 	Bandwidth     int    `json:"bandwidth"`
 	RealBandwidth int    `json:"realBandwidth"`
 	MaxSpeed      int    `json:"maxSpeed"`
@@ -101,6 +102,7 @@ func GetIPs(bandwidth int, country string, dc string, tlsOnly bool) string {
 			result := &ScanResult{
 				IP:            r.IP,
 				Port:          r.Port,
+				TLS:           r.TLS,
 				Bandwidth:     bandwidth,
 				RealBandwidth: maxSpeed / 128,
 				MaxSpeed:      maxSpeed,
